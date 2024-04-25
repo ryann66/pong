@@ -9,13 +9,15 @@
 #endif
 
 #include <stdbool.h>
+#include <time.h>
+#include <stdlib.h>
+#include <math.h>
 
 #define FRAME_RATE 60
 #define SCORE_DELAY 1
 
 #define PADDLE_SPEED 4.
 #define BALL_SPEED 4.
-#define BALL_ACCELERATION_FACTOR 1.1
 
 #define SEC_PER_FRAME 1000 / (FRAME_RATE)
 #define SCORE_DELAY_MS (1000 * SCORE_DELAY)
@@ -64,9 +66,9 @@ void fixedUpdate(int value);
 
 void resetBall() {
     ballX = WINDOW_WIDTHF / 2;
-    ballY = WINDOW_HEIGHTF;
+    ballY = WINDOW_HEIGHTF / 2;
     ballVelocityX = leftStart ? -5 : 5;
-    ballVelocityY = -5;
+    ballVelocityY = 2 * sinf((float) rand());
     leftStart = !leftStart;
     inPlay = true;
 }
@@ -180,15 +182,16 @@ void fixedUpdate(int value) {
     if (inPlay) {
         // Simple collision resolvers that rely on low speed and small BALL_DIM to be accurate
         // top and bottom
-        if (ballY > WINDOW_HEIGHTF) {
+        if (ballY + BALL_DIM > WINDOW_HEIGHTF) {
             ballVelocityY = -ballVelocityY;
             ballY += ballVelocityY;
         } else if (ballY < 0) {
             ballVelocityY = -ballVelocityY;
             ballY += ballVelocityY;
         }
+        
         // paddles
-        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_WIDTH && ballY > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
+        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
             ballVelocityX = -ballVelocityX;
             ballX += ballVelocityX;
             // corner collision
@@ -196,9 +199,7 @@ void fixedUpdate(int value) {
                 ballVelocityY = -ballVelocityY;
                 ballY += ballVelocityY;
             }
-            ballVelocityX *= BALL_ACCELERATION_FACTOR;
-            ballVelocityY *= BALL_ACCELERATION_FACTOR;
-        } else if (ballX > RIGHT_PADDLE_X && ballX < RIGHT_PADDLE_X + PADDLE_WIDTH && ballY > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
+        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
             ballVelocityX = -ballVelocityX;
             ballX += ballVelocityX;
             // corner collision
@@ -206,8 +207,6 @@ void fixedUpdate(int value) {
                 ballVelocityY = -ballVelocityY;
                 ballY += ballVelocityY;
             }
-            ballVelocityX *= BALL_ACCELERATION_FACTOR;
-            ballVelocityY *= BALL_ACCELERATION_FACTOR;
         }
 
         // score colliders
@@ -218,7 +217,7 @@ void fixedUpdate(int value) {
             }
             glutTimerFunc(SCORE_DELAY_MS, reset, 0);
             inPlay = false;
-        } else if (ballX > WINDOW_WIDTHF) {
+        } else if (ballX + BALL_DIM > WINDOW_WIDTHF) {
             leftScore++;
             if (leftScore == 10) {
                 leftScore = rightScore = 0;
@@ -233,6 +232,7 @@ void fixedUpdate(int value) {
 }
 
 int main(int argc, char* argv) {
+    srand(time(NULL));
     glutInit(&argc, &argv);
     glutInitWindowSize((int)WINDOW_WIDTHF, (int)WINDOW_HEIGHTF);
     glutInitWindowPosition(100, 100);
