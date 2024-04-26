@@ -17,7 +17,9 @@
 #define SCORE_DELAY 1
 
 #define PADDLE_SPEED 4.
+#define INITIAL_BALL_SPEED 10.
 #define MAX_BALL_SPEED 14.
+#define BALL_SPEED_ACCELERATION 1.05
 
 #define SEC_PER_FRAME 1000 / (FRAME_RATE)
 #define SCORE_DELAY_MS (1000 * SCORE_DELAY)
@@ -63,7 +65,7 @@ unsigned char leftScore = 0, rightScore = 0;
 
 float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2, rightPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2;
 float ballVelocityX = 0, ballVelocityY = 0;
-float ballSpeed = MAX_BALL_SPEED / 2;
+float ballSpeed;
 bool leftStart = true;
 bool inPlay = false;
 
@@ -168,7 +170,16 @@ direction rightComputerController() {
 
 void fixedUpdate(int value);
 
+void accelerateBall() {
+    ballSpeed = min(ballSpeed * BALL_SPEED_ACCELERATION, MAX_BALL_SPEED);
+    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
+    vel /= ballSpeed;
+    ballVelocityX /= vel;
+    if (ballVelocityY != 0) ballVelocityY /= vel;
+}
+
 void resetBall() {
+    ballSpeed = INITIAL_BALL_SPEED;
     ballX = WINDOW_WIDTHF / 2;
     ballY = WINDOW_HEIGHTF / 2;
     ballVelocityX = leftStart ? -4 : 4;
@@ -291,9 +302,11 @@ void fixedUpdate(int value) {
         // top and bottom
         if (ballY + BALL_DIM > WINDOW_HEIGHTF) {
             ballVelocityY = -ballVelocityY;
+            accelerateBall();
             ballY += ballVelocityY;
         } else if (ballY < 0) {
             ballVelocityY = -ballVelocityY;
+            accelerateBall();
             ballY += ballVelocityY;
         }
         
