@@ -65,6 +65,46 @@ bool inPlay = false;
 
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
+typedef enum {
+    UP, DOWN, STATIC
+} direction;
+
+direction (*leftPaddleController)();
+direction (*rightPaddleController)();
+
+direction onePlayerController() {
+    if ((downButton || specialDownButton) ^ (upButton || specialUpButton)) {
+        if (downButton || specialDownButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
+direction wasdPlayerController() {
+    if (downButton ^ upButton) {
+        if (downButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
+direction arrowPlayerController() {
+    if (specialDownButton ^ specialUpButton) {
+        if (specialDownButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
 void fixedUpdate(int value);
 
 void resetBall() {
@@ -167,19 +207,17 @@ void specialKeyrelease(int key, int mouseX, int mouseY) {
 }
 
 void fixedUpdate(int value) {
-    if (downButton ^ upButton) {
-        if (downButton) {
-            leftPaddleY = max(leftPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
-        } else if (upButton) {
-            leftPaddleY = min(leftPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
-        }
+    direction d = leftPaddleController();
+    if (d == DOWN) {
+        leftPaddleY = max(leftPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
+    } else if (d == UP) {
+        leftPaddleY = min(leftPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
     }
-    if (specialDownButton ^ specialUpButton) {
-        if (specialDownButton) {
-            rightPaddleY = max(rightPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
-        } else if (specialUpButton) {
-            rightPaddleY = min(rightPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
-        }
+    d = rightPaddleController();
+    if (d == DOWN) {
+        rightPaddleY = max(rightPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
+    } else if (d == UP) {
+        rightPaddleY = min(rightPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
     }
 
     ballX += ballVelocityX;
@@ -252,6 +290,10 @@ int main(int argc, char* argv) {
     glutSpecialFunc(specialKeypress);
     glutKeyboardUpFunc(keyrelease);
     glutSpecialUpFunc(specialKeyrelease);
+
+    // set up paddle controllers
+    leftPaddleController = wasdPlayerController;
+    rightPaddleController = arrowPlayerController;
     
     // set delay before starting
     glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
