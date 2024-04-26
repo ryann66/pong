@@ -17,7 +17,7 @@
 #define SCORE_DELAY 1
 
 #define PADDLE_SPEED 4.
-#define BALL_SPEED 7.
+#define MAX_BALL_SPEED 14.
 
 #define SEC_PER_FRAME 1000 / (FRAME_RATE)
 #define SCORE_DELAY_MS (1000 * SCORE_DELAY)
@@ -30,12 +30,15 @@
 #define MAX_WINDOW_HEIGHT (WINDOW_WIDTHF * 3. / 4.)
 
 #define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8)
-#define PADDLE_WIDTH (WINDOW_WIDTHF / 100)
+#define PADDLE_WIDTH (WINDOW_WIDTHF / 90)
 #define BALL_RADIUS (WINDOW_WIDTHF / 240)
 #define MAX_BOUNCE_ANGLE (60)
+#define COMPUTER_AIMING_TOLERANCE (PADDLE_HEIGHT / 10)
 
 #define BALL_DIM (2 * BALL_RADIUS)
 #define MAX_BOUNCE_ANGLE_RAD (M_PI * MAX_BOUNCE_ANGLE / 180.)
+#define PADDLE_INVISIBLE_COLLIDER_WIDTH (1.5 * PADDLE_WIDTH)
+
 #define MAX_PADDLE_Y (WINDOW_HEIGHTF - PADDLE_HEIGHT)
 #define MIN_PADDLE_Y (0)
 #define LEFT_PADDLE_X (50)
@@ -60,6 +63,7 @@ unsigned char leftScore = 0, rightScore = 0;
 
 float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2, rightPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2;
 float ballVelocityX = 0, ballVelocityY = 0;
+float ballSpeed = MAX_BALL_SPEED / 2;
 bool leftStart = true;
 bool inPlay = false;
 
@@ -105,17 +109,75 @@ direction arrowPlayerController() {
     return STATIC;
 }
 
+/**
+ * Returns the y value of the next time the ball will intersect a paddle
+ * pass the current ball position and y velocity
+ * Does not need the x velocity
+*/
+float ballIntersectY(float tBallX, float tBallY, float tBallVelocityY) {
+    float yBounceTime;
+    if (tBallVelocityY > 0) {
+        yBounceTime = (WINDOW_HEIGHTF - tBallY) / tBallVelocityY;
+    } else {
+        yBounceTime = tBallY / -tBallVelocityY;
+    }
+    float xBounceTime;
+    if (ballVelocityX < 0) {
+        xBounceTime = (LEFT_PADDLE_X - tBallX) / ballVelocityX;
+    } else {
+        xBounceTime = (RIGHT_PADDLE_X - tBallX) / ballVelocityX;
+    }
+
+    // if hits a paddle next, return height of collision
+    if (xBounceTime < yBounceTime) {
+        return tBallY + tBallVelocityY * xBounceTime;
+    }
+
+    return ballIntersectY(tBallX + ballVelocityX * yBounceTime, (tBallVelocityY > 0) ? WINDOW_HEIGHTF : 0, -tBallVelocityY);
+}
+
+direction leftComputerController() {
+    float targetY;
+    if (ballVelocityX > 0 || !inPlay) targetY = WINDOW_HEIGHTF / 2;
+    else if (ballVelocityY == 0) targetY = ballY;
+    else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
+    targetY -= PADDLE_HEIGHT / 2;
+    if (leftPaddleY < targetY - COMPUTER_AIMING_TOLERANCE) {
+        return UP;
+    }
+    if (leftPaddleY > targetY + COMPUTER_AIMING_TOLERANCE) {
+        return DOWN;
+    }
+    return STATIC;
+}
+
+direction rightComputerController() {
+    float targetY;
+    if (ballVelocityX < 0 || !inPlay) targetY = WINDOW_HEIGHTF / 2;
+    else if (ballVelocityY == 0) targetY = ballY;
+    else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
+    targetY -= PADDLE_HEIGHT / 2;
+    if (rightPaddleY < targetY - COMPUTER_AIMING_TOLERANCE) {
+        return UP;
+    }
+    if (rightPaddleY > targetY + COMPUTER_AIMING_TOLERANCE) {
+        return DOWN;
+    }
+    return STATIC;
+}
+
 void fixedUpdate(int value);
 
 void resetBall() {
     ballX = WINDOW_WIDTHF / 2;
     ballY = WINDOW_HEIGHTF / 2;
-    ballVelocityX = leftStart ? -3 : 3;
+    ballVelocityX = leftStart ? -4 : 4;
     ballVelocityY = sinf((float) rand());
+    ballVelocityY = 0.;
     float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
-    vel /= BALL_SPEED;
+    vel /= ballSpeed;
     ballVelocityX /= vel;
-    ballVelocityY /= vel;
+    if (ballVelocityY != 0) ballVelocityY /= vel;
     leftStart = !leftStart;
     inPlay = true;
 }
@@ -236,21 +298,21 @@ void fixedUpdate(int value) {
         }
         
         // paddles
-        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
+        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
             ballX -= ballVelocityX;
             float relY = ballY + BALL_RADIUS - leftPaddleY - (PADDLE_HEIGHT / 2);
             relY /= (PADDLE_HEIGHT / 2);
             float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
-            ballVelocityX = BALL_SPEED * cosf(bounceAngle);
-            ballVelocityY = BALL_SPEED * sinf(bounceAngle);
+            ballVelocityX = ballSpeed * cosf(bounceAngle);
+            ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
-        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
+        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
             ballX -= ballVelocityX;
             float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
             relY /= (PADDLE_HEIGHT / 2);
             float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
-            ballVelocityX = -BALL_SPEED * cosf(bounceAngle);
-            ballVelocityY = BALL_SPEED * sinf(bounceAngle);
+            ballVelocityX = -ballSpeed * cosf(bounceAngle);
+            ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
         }
 
@@ -292,8 +354,8 @@ int main(int argc, char* argv) {
     glutSpecialUpFunc(specialKeyrelease);
 
     // set up paddle controllers
-    leftPaddleController = wasdPlayerController;
-    rightPaddleController = arrowPlayerController;
+    leftPaddleController = leftComputerController;
+    rightPaddleController = rightComputerController;
     
     // set delay before starting
     glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
