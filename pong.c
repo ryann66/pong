@@ -17,7 +17,7 @@
 #define SCORE_DELAY 1
 
 #define PADDLE_SPEED 4.
-#define BALL_SPEED 4.
+#define BALL_SPEED 7.
 
 #define SEC_PER_FRAME 1000 / (FRAME_RATE)
 #define SCORE_DELAY_MS (1000 * SCORE_DELAY)
@@ -31,8 +31,11 @@
 
 #define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8)
 #define PADDLE_WIDTH (WINDOW_WIDTHF / 100)
-#define BALL_DIM (WINDOW_WIDTHF / 120)
+#define BALL_RADIUS (WINDOW_WIDTHF / 240)
+#define MAX_BOUNCE_ANGLE (60)
 
+#define BALL_DIM (2 * BALL_RADIUS)
+#define MAX_BOUNCE_ANGLE_RAD (M_PI * MAX_BOUNCE_ANGLE / 180.)
 #define MAX_PADDLE_Y (WINDOW_HEIGHTF - PADDLE_HEIGHT)
 #define MIN_PADDLE_Y (0)
 #define LEFT_PADDLE_X (50)
@@ -67,8 +70,12 @@ void fixedUpdate(int value);
 void resetBall() {
     ballX = WINDOW_WIDTHF / 2;
     ballY = WINDOW_HEIGHTF / 2;
-    ballVelocityX = leftStart ? -5 : 5;
-    ballVelocityY = 2 * sinf((float) rand());
+    ballVelocityX = leftStart ? -3 : 3;
+    ballVelocityY = sinf((float) rand());
+    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
+    vel /= BALL_SPEED;
+    ballVelocityX /= vel;
+    ballVelocityY /= vel;
     leftStart = !leftStart;
     inPlay = true;
 }
@@ -192,21 +199,21 @@ void fixedUpdate(int value) {
         
         // paddles
         if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
-            ballVelocityX = -ballVelocityX;
-            ballX += ballVelocityX;
-            // corner collision
-            if (ballY - ballVelocityY > leftPaddleY + PADDLE_HEIGHT || ballY - ballVelocityY < leftPaddleY) {
-                ballVelocityY = -ballVelocityY;
-                ballY += ballVelocityY;
-            }
+            ballX -= ballVelocityX;
+            float relY = ballY + BALL_RADIUS - leftPaddleY - (PADDLE_HEIGHT / 2);
+            relY /= (PADDLE_HEIGHT / 2);
+            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
+            ballVelocityX = BALL_SPEED * cosf(bounceAngle);
+            ballVelocityY = BALL_SPEED * sinf(bounceAngle);
+            ballY += ballVelocityY;
         } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
-            ballVelocityX = -ballVelocityX;
-            ballX += ballVelocityX;
-            // corner collision
-            if (ballY - ballVelocityY > rightPaddleY + PADDLE_HEIGHT || ballY - ballVelocityY < rightPaddleY) {
-                ballVelocityY = -ballVelocityY;
-                ballY += ballVelocityY;
-            }
+            ballX -= ballVelocityX;
+            float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
+            relY /= (PADDLE_HEIGHT / 2);
+            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
+            ballVelocityX = -BALL_SPEED * cosf(bounceAngle);
+            ballVelocityY = BALL_SPEED * sinf(bounceAngle);
+            ballY += ballVelocityY;
         }
 
         // score colliders
