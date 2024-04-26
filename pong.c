@@ -45,6 +45,7 @@
 #define MIN_PADDLE_Y (0)
 #define LEFT_PADDLE_X (50)
 #define RIGHT_PADDLE_X (WINDOW_WIDTHF - LEFT_PADDLE_X)
+#define INIT_PADDLE_Y ((WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2)
 
 #define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9)
 #define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100)
@@ -63,11 +64,11 @@
 
 unsigned char leftScore = 0, rightScore = 0;
 
-float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2, rightPaddleY = (WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2;
+float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = INIT_PADDLE_Y, rightPaddleY = INIT_PADDLE_Y;
 float ballVelocityX = 0, ballVelocityY = 0;
 float ballSpeed;
 bool leftStart = true;
-bool inPlay = false;
+bool inPlay = false, menu = true;
 
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
@@ -198,6 +199,19 @@ void reset(int value) {
     glutPostRedisplay();
 }
 
+void exitMenu() {
+    menu = false;
+    // set delay before starting
+    glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
+    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, 0);
+    glutPostRedisplay();
+}
+
+void startMenu() {
+    menu = true;
+    glutPostRedisplay();
+}
+
 // prints digit with x and y giving the position of the bottom left corner of the digit
 void printDigit(int x, int y, unsigned char digit) {
     // bottom bar
@@ -234,23 +248,28 @@ void printDigit(int x, int y, unsigned char digit) {
 void display() {
     glClearColor(0., 0., 0., 1.);
     glClear(GL_COLOR_BUFFER_BIT);
-    
     glColor3f(1., 1., 1.);
-    // left paddle
-    glRectf(Xpos(LEFT_PADDLE_X - PADDLE_WIDTH), Ypos(leftPaddleY), Xpos(LEFT_PADDLE_X), Ypos(leftPaddleY + PADDLE_HEIGHT));
-    // right paddle
-    glRectf(Xpos(RIGHT_PADDLE_X), Ypos(rightPaddleY), Xpos(RIGHT_PADDLE_X + PADDLE_WIDTH), Ypos(rightPaddleY + PADDLE_HEIGHT));
-    // ball
-    glRectf(Xpos(ballX), Ypos(ballY), Xpos(ballX + BALL_DIM), Ypos(ballY + BALL_DIM));
-    // scores (left, right)
-    printDigit((WINDOW_WIDTHF / 2) - DIGIT_OFFSET - DIGIT_WIDTH, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, leftScore);
-    printDigit((WINDOW_WIDTHF / 2) + DIGIT_OFFSET, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, rightScore);
-    // dashes
-    float xtmp = (WINDOW_WIDTHF / 2) - DASH_OFFSET;
-    for (float ytmp = 0; ytmp < WINDOW_HEIGHTF; ytmp += 2 * DASH_HEIGHT) {
-        glRectf(Xpos(xtmp), Ypos(ytmp), Xpos(xtmp + DASH_WIDTH), Ypos(ytmp + DASH_HEIGHT));
-    }
 
+    if (menu) {
+        exitMenu();
+        // TODO
+    } else {
+        // left paddle
+        glRectf(Xpos(LEFT_PADDLE_X - PADDLE_WIDTH), Ypos(leftPaddleY), Xpos(LEFT_PADDLE_X), Ypos(leftPaddleY + PADDLE_HEIGHT));
+        // right paddle
+        glRectf(Xpos(RIGHT_PADDLE_X), Ypos(rightPaddleY), Xpos(RIGHT_PADDLE_X + PADDLE_WIDTH), Ypos(rightPaddleY + PADDLE_HEIGHT));
+        // ball
+        glRectf(Xpos(ballX), Ypos(ballY), Xpos(ballX + BALL_DIM), Ypos(ballY + BALL_DIM));
+        // scores (left, right)
+        printDigit((WINDOW_WIDTHF / 2) - DIGIT_OFFSET - DIGIT_WIDTH, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, leftScore);
+        printDigit((WINDOW_WIDTHF / 2) + DIGIT_OFFSET, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, rightScore);
+        // dashes
+        float xtmp = (WINDOW_WIDTHF / 2) - DASH_OFFSET;
+        for (float ytmp = 0; ytmp < WINDOW_HEIGHTF; ytmp += 2 * DASH_HEIGHT) {
+            glRectf(Xpos(xtmp), Ypos(ytmp), Xpos(xtmp + DASH_WIDTH), Ypos(ytmp + DASH_HEIGHT));
+        }
+    }
+    
     glFlush();
     glutSwapBuffers();
 }
@@ -277,6 +296,13 @@ void keyrelease(unsigned char key, int mouseX, int mouseY) {
 void specialKeyrelease(int key, int mouseX, int mouseY) {
     if (key == GLUT_KEY_UP) specialUpButton = false;
     else if (key == GLUT_KEY_DOWN) specialDownButton = false;
+}
+
+void clickHandler(int button, int state, int x, int y) {
+    if (menu && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // check if clicked on a button
+        // do something
+    }
 }
 
 void fixedUpdate(int value) {
@@ -332,18 +358,24 @@ void fixedUpdate(int value) {
         // score colliders
         if (ballX < 0) {
             rightScore++;
+            inPlay = false;
             if (rightScore == 10) {
                 leftScore = rightScore = 0;
+                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+                startMenu();
+                return;
             }
             glutTimerFunc(SCORE_DELAY_MS, reset, 0);
-            inPlay = false;
         } else if (ballX + BALL_DIM > WINDOW_WIDTHF) {
             leftScore++;
+            inPlay = false;
             if (leftScore == 10) {
                 leftScore = rightScore = 0;
+                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+                startMenu();
+                return;
             }
             glutTimerFunc(SCORE_DELAY_MS, reset, 0);
-            inPlay = false;
         }
     }
     
@@ -361,6 +393,7 @@ int main(int argc, char* argv) {
     glutCreateWindow("Pong");
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
+    glutMouseFunc(clickHandler);
     glutKeyboardFunc(keypress);
     glutSpecialFunc(specialKeypress);
     glutKeyboardUpFunc(keyrelease);
@@ -369,10 +402,6 @@ int main(int argc, char* argv) {
     // set up paddle controllers
     leftPaddleController = leftComputerController;
     rightPaddleController = rightComputerController;
-    
-    // set delay before starting
-    glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
-    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, 0);
     
     glutMainLoop();
 }
