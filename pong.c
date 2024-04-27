@@ -32,7 +32,7 @@
 #define BUTTON_TEXT_COLOR 0.,0.,0.
 #define PADDLE_COLOR 1.,1.,1.
 #define BALL_COLOR 1.,1.,1.
-#define GAME_ENVIRONMENT_COLOR 1.,1.,1.
+#define GAME_ENVIRONMENT_COLOR 0.8,0.8,0.8
 
 #define SEC_PER_FRAME (1000. / (FRAME_RATE))
 #define SCORE_DELAY_MS (1000. * SCORE_DELAY)
@@ -84,7 +84,7 @@
 #define BUTTON_FONT_STROKE (BUTTON_FONT_WIDTH / 4.)
 
 #define LOGO_FONT_WIDTH (BUTTON_WIDTH / 4.)
-#define LOGO_FONT_HEIGHT (BUTTON_HEIGHT)
+#define LOGO_FONT_HEIGHT (BUTTON_HEIGHT * 1.25)
 #define LOGO_FONT_SPACING (BUTTON_FONT_WIDTH / 3.)
 #define LOGO_FONT_STROKE (LOGO_FONT_WIDTH / 6.)
 
@@ -508,9 +508,6 @@ void display() {
         glColor3f(PADDLE_COLOR);
         glRectf(Xpos(LEFT_PADDLE_X - PADDLE_WIDTH), Ypos(leftPaddleY), Xpos(LEFT_PADDLE_X), Ypos(leftPaddleY + PADDLE_HEIGHT));
         glRectf(Xpos(RIGHT_PADDLE_X), Ypos(rightPaddleY), Xpos(RIGHT_PADDLE_X + PADDLE_WIDTH), Ypos(rightPaddleY + PADDLE_HEIGHT));
-        // ball
-        glColor3f(BALL_COLOR);
-        glRectf(Xpos(ballX), Ypos(ballY), Xpos(ballX + BALL_DIM), Ypos(ballY + BALL_DIM));
         // scores (left, right)
         glColor3f(GAME_ENVIRONMENT_COLOR);
         printDigit((WINDOW_WIDTHF / 2) - DIGIT_OFFSET - DIGIT_WIDTH, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, leftScore);
@@ -520,6 +517,9 @@ void display() {
         for (float ytmp = 0; ytmp < WINDOW_HEIGHTF; ytmp += 2 * DASH_HEIGHT) {
             glRectf(Xpos(xtmp), Ypos(ytmp), Xpos(xtmp + DASH_WIDTH), Ypos(ytmp + DASH_HEIGHT));
         }
+        // ball
+        glColor3f(BALL_COLOR);
+        glRectf(Xpos(ballX), Ypos(ballY), Xpos(ballX + BALL_DIM), Ypos(ballY + BALL_DIM));
     }
     
     glFlush();
