@@ -12,6 +12,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #define FRAME_RATE 60
 #define SCORE_DELAY 1
@@ -56,6 +57,22 @@
 #define DASH_WIDTH (WINDOW_WIDTHF / 200)
 #define DASH_OFFSET (DASH_WIDTH / 2)
 
+#define BUTTON_WIDTH (WINDOW_WIDTHF / 2.5)
+#define BUTTON_HEIGHT (WINDOW_HEIGHTF / 9)
+#define BUTTON_OFFSET_Y (BUTTON_HEIGHT / 2)
+#define BUTTON_OFFSET_X (BUTTON_WIDTH / 2)
+#define BUTTON_SPACING (BUTTON_HEIGHT / 3)
+
+#define BUTTON_FONT_WIDTH (BUTTON_WIDTH / 14)
+#define BUTTON_FONT_HEIGHT (BUTTON_HEIGHT * 2 / 3)
+#define BUTTON_FONT_SPACING (BUTTON_FONT_WIDTH / 3)
+#define BUTTON_FONT_STROKE (BUTTON_FONT_WIDTH / 4)
+
+#define LOGO_FONT_WIDTH (BUTTON_WIDTH / 4)
+#define LOGO_FONT_HEIGHT (BUTTON_HEIGHT)
+#define LOGO_FONT_SPACING (BUTTON_FONT_WIDTH / 3)
+#define LOGO_FONT_STROKE (LOGO_FONT_WIDTH / 6)
+
 #define Xpos(x) (((x) * 2 / WINDOW_WIDTHF) - 1)
 #define Ypos(y) (((y) * 2 / WINDOW_HEIGHTF) - 1)
 
@@ -76,8 +93,9 @@ typedef enum {
     UP, DOWN, STATIC
 } direction;
 
-direction (*leftPaddleController)();
-direction (*rightPaddleController)();
+enum {
+    ONE_PLAYER = 0, TWO_PLAYER = 1, ZERO_PLAYER = 2
+} gameType = ONE_PLAYER;
 
 direction onePlayerController() {
     if ((downButton || specialDownButton) ^ (upButton || specialUpButton)) {
@@ -169,6 +187,99 @@ direction rightComputerController() {
     return STATIC;
 }
 
+direction (*leftPaddleController)() = onePlayerController;
+direction (*rightPaddleController)() = rightComputerController;
+
+inline bool inRect(int x, int y, int lbX, int lbY, int ubX, int ubY) {
+    return x >= lbX && x <= ubX && y >= lbY && y <= ubY;
+}
+
+/**
+ * WARNING! partial implementation, check code to see if your character is supported
+ * Note: prints only uppercase, requires a lowercase c
+*/
+void printButtonChar(int x, int y, char c) {
+    switch (c) {
+        case 'a':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'e':
+            glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + 0.75 * BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
+        case 'c':
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+        case 'l':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
+            break;
+        case 'm':
+            glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT));
+        case 'n':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'o':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'r':
+            glBegin(GL_QUADS);
+                glVertex2f(Xpos(x + 1.5 * BUTTON_FONT_STROKE), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2));
+                glVertex2f(Xpos(x + 2.5 * BUTTON_FONT_STROKE), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y));
+            glEnd();
+        case 'p':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 't':
+            glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'w':
+            glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT));
+        case 'u':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'y':
+            glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
+            glBegin(GL_QUADS);
+                glVertex2f(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
+                glVertex2f(Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
+                glVertex2f(Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
+                glVertex2f(Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+
+            glEnd();
+            break;
+    }
+}
+
+inline void printButtonString(int x, int y, const char* string) {
+    while (*string) {
+        printButtonChar(x, y, *string++);
+        x += BUTTON_FONT_SPACING + BUTTON_FONT_WIDTH;
+    }
+}
+
+inline void printButtonStringCentered(int x, int y, const char* string) {
+    size_t l = strlen(string);
+    printButtonString(x - (l * BUTTON_FONT_WIDTH + (l - 1) * BUTTON_FONT_SPACING) / 2, y, string);
+}
+
 void fixedUpdate(int value);
 
 void accelerateBall() {
@@ -248,12 +359,67 @@ void printDigit(int x, int y, unsigned char digit) {
 void display() {
     glClearColor(0., 0., 0., 1.);
     glClear(GL_COLOR_BUFFER_BIT);
-    glColor3f(1., 1., 1.);
 
     if (menu) {
-        exitMenu();
-        // TODO
+        glColor3f(1., 1., 1.);
+        // logo
+        // P
+        float x = (WINDOW_WIDTHF / 2) - ((4 * LOGO_FONT_WIDTH + 3 * LOGO_FONT_SPACING) / 2);
+        float y = WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y + BUTTON_SPACING;
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+        // O
+        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
+        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE));
+        // N
+        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x + LOGO_FONT_WIDTH), Ypos(y), Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glBegin(GL_QUADS);
+            glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+            glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT - 1.5 * LOGO_FONT_STROKE));
+            glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y));
+            glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + 1.5 * LOGO_FONT_STROKE));
+        glEnd();
+        // G
+        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
+        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+        glRectf(Xpos(x + LOGO_FONT_WIDTH / 2), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+
+        // player number button
+        glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y));
+        const char* str;
+        switch (gameType) {
+            case ONE_PLAYER:
+                str = "one player";
+                break;
+            case TWO_PLAYER:
+                str = "two player";
+                break;
+            case ZERO_PLAYER:
+                str = "computer";
+                break;
+        }
+        glColor3f(0., 0., 0.);
+        printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, str);
+        glColor3f(1., 1., 1.);
+
+        // play button
+        glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING));
+        glColor3f(0., 0., 0.);
+        printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "play");
+        glColor3f(1., 1., 1.);
+
     } else {
+        glColor3f(1., 1., 1.);
         // left paddle
         glRectf(Xpos(LEFT_PADDLE_X - PADDLE_WIDTH), Ypos(leftPaddleY), Xpos(LEFT_PADDLE_X), Ypos(leftPaddleY + PADDLE_HEIGHT));
         // right paddle
@@ -300,8 +466,32 @@ void specialKeyrelease(int key, int mouseX, int mouseY) {
 
 void clickHandler(int button, int state, int x, int y) {
     if (menu && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        // check if clicked on a button
-        // do something
+        // flip x and y
+        y = WINDOW_HEIGHTF - y;
+        x = WINDOW_WIDTHF - x;
+        if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y))) {
+            // player number button
+            gameType = ++gameType % 3;
+            switch (gameType) {
+                case ONE_PLAYER:
+                    leftPaddleController = onePlayerController;
+                    rightPaddleController = rightComputerController;
+                    break;
+                case TWO_PLAYER:
+                    leftPaddleController = wasdPlayerController;
+                    rightPaddleController = arrowPlayerController;
+                    break;
+                case ZERO_PLAYER:
+                    leftPaddleController = leftComputerController;
+                    rightPaddleController = rightComputerController;
+                    break;
+            }
+            glutPostRedisplay();
+        }
+        if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING))) {
+            // play button
+            exitMenu();
+        }
     }
 }
 
@@ -398,10 +588,6 @@ int main(int argc, char* argv) {
     glutSpecialFunc(specialKeypress);
     glutKeyboardUpFunc(keyrelease);
     glutSpecialUpFunc(specialKeyrelease);
-
-    // set up paddle controllers
-    leftPaddleController = leftComputerController;
-    rightPaddleController = rightComputerController;
     
     glutMainLoop();
 }
