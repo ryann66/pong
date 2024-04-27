@@ -17,11 +17,22 @@
 #define FRAME_RATE (60.)
 #define SCORE_DELAY (1.)
 #define RESUME_DELAY (1.)
+#define TARGET_SCORE (10.)
 
 #define PADDLE_SPEED (4.)
 #define INITIAL_BALL_SPEED (10.)
 #define MAX_BALL_SPEED (14.)
 #define BALL_SPEED_ACCELERATION (1.05)
+
+#define BACKGROUND_COLOR 0.,0.,0.
+#define LOGO_COLOR 1.,1.,1.
+#define TEXT_COLOR 1.,1.,1.
+#define BUTTON_COLOR 1.,1.,1.
+#define HOVER_BUTTON_COLOR .8,.8,.8
+#define BUTTON_TEXT_COLOR 0.,0.,0.
+#define PADDLE_COLOR 1.,1.,1.
+#define BALL_COLOR 1.,1.,1.
+#define GAME_ENVIRONMENT_COLOR 1.,1.,1.
 
 #define SEC_PER_FRAME (1000. / (FRAME_RATE))
 #define SCORE_DELAY_MS (1000. * SCORE_DELAY)
@@ -53,7 +64,7 @@
 #define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9.)
 #define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100.)
 #define DIGIT_WIDTH ((DIGIT_HEIGHT + DIGIT_STROKE_WEIGHT) / 2.)
-#define DIGIT_OFFSET DIGIT_WIDTH
+#define DIGIT_OFFSET (DIGIT_WIDTH / 2.)
 
 #define DASH_HEIGHT (WINDOW_HEIGHTF / 49.)
 #define DASH_WIDTH (WINDOW_WIDTHF / 200.)
@@ -64,7 +75,7 @@
 #define BUTTON_OFFSET_Y (BUTTON_HEIGHT / 2.)
 #define BUTTON_OFFSET_X (BUTTON_WIDTH / 2.)
 #define BUTTON_SPACING (BUTTON_HEIGHT / 3.)
-#define PAUSE_BUTTON_WIDTH (WINDOW_WIDTHF / 4.)
+#define PAUSE_BUTTON_WIDTH (WINDOW_WIDTHF / 3.75)
 #define PAUSE_BUTTON_OFFSET_X (PAUSE_BUTTON_WIDTH / 2.)
 
 #define BUTTON_FONT_WIDTH (BUTTON_WIDTH / 14.)
@@ -411,12 +422,12 @@ void printDigit(int x, int y, unsigned char digit) {
 
 // prints the screen
 void display() {
-    glClearColor(0., 0., 0., 1.);
+    glClearColor(BACKGROUND_COLOR, 1.);
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (menu) {
-        glColor3f(1., 1., 1.);
         // logo
+        glColor3f(LOGO_COLOR);
         // P
         float x = (WINDOW_WIDTHF / 2) - ((4 * LOGO_FONT_WIDTH + 3 * LOGO_FONT_SPACING) / 2);
         float y = WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y + BUTTON_SPACING;
@@ -449,6 +460,7 @@ void display() {
         glRectf(Xpos(x + LOGO_FONT_WIDTH / 2), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
 
         // player number button
+        glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y));
         const char* str;
         switch (gameType) {
@@ -462,39 +474,40 @@ void display() {
                 str = "computer";
                 break;
         }
-        glColor3f(0., 0., 0.);
+        glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, str);
-        glColor3f(1., 1., 1.);
 
         // play button
+        glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING));
-        glColor3f(0., 0., 0.);
+        glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "play");
-        glColor3f(1., 1., 1.);
     } else if (pauseMenu) {
         // resume button
+        glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_HEIGHT + BUTTON_SPACING / 2));
-        glColor3f(0., 0., 0.);
+        glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "resume");
-        glColor3f(1., 1., 1.);
 
         // exit button
+        glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_SPACING / 2));
-        glColor3f(0., 0., 0.);
+        glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "exit");
-        glColor3f(1., 1., 1.);
 
         // pause
+        glColor3f(TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 + BUTTON_SPACING + BUTTON_HEIGHT, "pause");
     } else {
-        glColor3f(1., 1., 1.);
-        // left paddle
+        // paddles
+        glColor3f(PADDLE_COLOR);
         glRectf(Xpos(LEFT_PADDLE_X - PADDLE_WIDTH), Ypos(leftPaddleY), Xpos(LEFT_PADDLE_X), Ypos(leftPaddleY + PADDLE_HEIGHT));
-        // right paddle
         glRectf(Xpos(RIGHT_PADDLE_X), Ypos(rightPaddleY), Xpos(RIGHT_PADDLE_X + PADDLE_WIDTH), Ypos(rightPaddleY + PADDLE_HEIGHT));
         // ball
+        glColor3f(BALL_COLOR);
         glRectf(Xpos(ballX), Ypos(ballY), Xpos(ballX + BALL_DIM), Ypos(ballY + BALL_DIM));
         // scores (left, right)
+        glColor3f(GAME_ENVIRONMENT_COLOR);
         printDigit((WINDOW_WIDTHF / 2) - DIGIT_OFFSET - DIGIT_WIDTH, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, leftScore);
         printDigit((WINDOW_WIDTHF / 2) + DIGIT_OFFSET, WINDOW_HEIGHTF - DIGIT_HEIGHT - DIGIT_OFFSET, rightScore);
         // dashes
@@ -634,7 +647,7 @@ void fixedUpdate(int value) {
         if (ballX < 0) {
             rightScore++;
             inPlay = false;
-            if (rightScore == 10) {
+            if (rightScore == TARGET_SCORE) {
                 leftScore = rightScore = 0;
                 leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
                 startMenu();
@@ -644,7 +657,7 @@ void fixedUpdate(int value) {
         } else if (ballX + BALL_DIM > WINDOW_WIDTHF) {
             leftScore++;
             inPlay = false;
-            if (leftScore == 10) {
+            if (leftScore == TARGET_SCORE) {
                 leftScore = rightScore = 0;
                 leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
                 startMenu();
