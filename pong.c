@@ -89,6 +89,9 @@ bool inPlay = false, menu = true;
 
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
+// used to prevent multiple fixed_update timers being triggered on spamming menu
+int menuInstance = 0;
+
 typedef enum {
     UP, DOWN, STATIC
 } direction;
@@ -314,12 +317,13 @@ void exitMenu() {
     menu = false;
     // set delay before starting
     glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
-    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, 0);
+    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, menuInstance);
     glutPostRedisplay();
 }
 
 void startMenu() {
     menu = true;
+    menuInstance++;
     glutPostRedisplay();
 }
 
@@ -496,6 +500,7 @@ void clickHandler(int button, int state, int x, int y) {
 }
 
 void fixedUpdate(int value) {
+    if (value != menuInstance) return;
     direction d = leftPaddleController();
     if (d == DOWN) {
         leftPaddleY = max(leftPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
@@ -570,7 +575,7 @@ void fixedUpdate(int value) {
     }
     
     glutPostRedisplay();
-    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, 0);
+    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, value);
 }
 
 int main(int argc, char* argv) {
