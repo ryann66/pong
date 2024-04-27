@@ -14,67 +14,71 @@
 #include <math.h>
 #include <string.h>
 
-#define FRAME_RATE 60
-#define SCORE_DELAY 1
+#define FRAME_RATE (60.)
+#define SCORE_DELAY (1.)
+#define RESUME_DELAY (1.)
 
-#define PADDLE_SPEED 4.
-#define INITIAL_BALL_SPEED 10.
-#define MAX_BALL_SPEED 14.
-#define BALL_SPEED_ACCELERATION 1.05
+#define PADDLE_SPEED (4.)
+#define INITIAL_BALL_SPEED (10.)
+#define MAX_BALL_SPEED (14.)
+#define BALL_SPEED_ACCELERATION (1.05)
 
-#define SEC_PER_FRAME 1000 / (FRAME_RATE)
-#define SCORE_DELAY_MS (1000 * SCORE_DELAY)
+#define SEC_PER_FRAME (1000. / (FRAME_RATE))
+#define SCORE_DELAY_MS (1000. * SCORE_DELAY)
+#define RESUME_DELAY_MS (1000. * RESUME_DELAY)
 
 #define WINDOW_WIDTHF (800.)
 #define WINDOW_HEIGHTF (600.)
 
-#define MIN_WINDOW_WIDTH 500
+#define MIN_WINDOW_WIDTH (500.)
 #define MIN_WINDOW_HEIGHT (WINDOW_WIDTHF * 9. / 16.)
 #define MAX_WINDOW_HEIGHT (WINDOW_WIDTHF * 3. / 4.)
 
-#define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8)
-#define PADDLE_WIDTH (WINDOW_WIDTHF / 90)
-#define BALL_RADIUS (WINDOW_WIDTHF / 240)
-#define MAX_BOUNCE_ANGLE (60)
-#define COMPUTER_AIMING_TOLERANCE (PADDLE_HEIGHT / 10)
+#define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8.)
+#define PADDLE_WIDTH (WINDOW_WIDTHF / 90.)
+#define BALL_RADIUS (WINDOW_WIDTHF / 240.)
+#define MAX_BOUNCE_ANGLE (60.)
+#define COMPUTER_AIMING_TOLERANCE (PADDLE_HEIGHT / 10.)
 
-#define BALL_DIM (2 * BALL_RADIUS)
+#define BALL_DIM (2. * BALL_RADIUS)
 #define MAX_BOUNCE_ANGLE_RAD (M_PI * MAX_BOUNCE_ANGLE / 180.)
 #define PADDLE_INVISIBLE_COLLIDER_WIDTH (1.5 * PADDLE_WIDTH)
 
 #define MAX_PADDLE_Y (WINDOW_HEIGHTF - PADDLE_HEIGHT)
-#define MIN_PADDLE_Y (0)
-#define LEFT_PADDLE_X (50)
+#define MIN_PADDLE_Y (0.)
+#define LEFT_PADDLE_X (50.)
 #define RIGHT_PADDLE_X (WINDOW_WIDTHF - LEFT_PADDLE_X)
-#define INIT_PADDLE_Y ((WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2)
+#define INIT_PADDLE_Y ((WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2.)
 
-#define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9)
-#define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100)
-#define DIGIT_WIDTH ((DIGIT_HEIGHT + DIGIT_STROKE_WEIGHT) / 2)
+#define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9.)
+#define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100.)
+#define DIGIT_WIDTH ((DIGIT_HEIGHT + DIGIT_STROKE_WEIGHT) / 2.)
 #define DIGIT_OFFSET DIGIT_WIDTH
 
-#define DASH_HEIGHT (WINDOW_HEIGHTF / 49)
-#define DASH_WIDTH (WINDOW_WIDTHF / 200)
-#define DASH_OFFSET (DASH_WIDTH / 2)
+#define DASH_HEIGHT (WINDOW_HEIGHTF / 49.)
+#define DASH_WIDTH (WINDOW_WIDTHF / 200.)
+#define DASH_OFFSET (DASH_WIDTH / 2.)
 
 #define BUTTON_WIDTH (WINDOW_WIDTHF / 2.5)
-#define BUTTON_HEIGHT (WINDOW_HEIGHTF / 9)
-#define BUTTON_OFFSET_Y (BUTTON_HEIGHT / 2)
-#define BUTTON_OFFSET_X (BUTTON_WIDTH / 2)
-#define BUTTON_SPACING (BUTTON_HEIGHT / 3)
+#define BUTTON_HEIGHT (WINDOW_HEIGHTF / 9.)
+#define BUTTON_OFFSET_Y (BUTTON_HEIGHT / 2.)
+#define BUTTON_OFFSET_X (BUTTON_WIDTH / 2.)
+#define BUTTON_SPACING (BUTTON_HEIGHT / 3.)
+#define PAUSE_BUTTON_WIDTH (WINDOW_WIDTHF / 4.)
+#define PAUSE_BUTTON_OFFSET_X (PAUSE_BUTTON_WIDTH / 2.)
 
-#define BUTTON_FONT_WIDTH (BUTTON_WIDTH / 14)
-#define BUTTON_FONT_HEIGHT (BUTTON_HEIGHT * 2 / 3)
-#define BUTTON_FONT_SPACING (BUTTON_FONT_WIDTH / 3)
-#define BUTTON_FONT_STROKE (BUTTON_FONT_WIDTH / 4)
+#define BUTTON_FONT_WIDTH (BUTTON_WIDTH / 14.)
+#define BUTTON_FONT_HEIGHT (BUTTON_HEIGHT * 2. / 3.)
+#define BUTTON_FONT_SPACING (BUTTON_FONT_WIDTH / 3.)
+#define BUTTON_FONT_STROKE (BUTTON_FONT_WIDTH / 4.)
 
-#define LOGO_FONT_WIDTH (BUTTON_WIDTH / 4)
+#define LOGO_FONT_WIDTH (BUTTON_WIDTH / 4.)
 #define LOGO_FONT_HEIGHT (BUTTON_HEIGHT)
-#define LOGO_FONT_SPACING (BUTTON_FONT_WIDTH / 3)
-#define LOGO_FONT_STROKE (LOGO_FONT_WIDTH / 6)
+#define LOGO_FONT_SPACING (BUTTON_FONT_WIDTH / 3.)
+#define LOGO_FONT_STROKE (LOGO_FONT_WIDTH / 6.)
 
-#define Xpos(x) (((x) * 2 / WINDOW_WIDTHF) - 1)
-#define Ypos(y) (((y) * 2 / WINDOW_HEIGHTF) - 1)
+#define Xpos(x) (((x) * 2. / WINDOW_WIDTHF) - 1.)
+#define Ypos(y) (((y) * 2. / WINDOW_HEIGHTF) - 1.)
 
 #define max(A, B) ((A) > (B) ? (A) : (B))
 #define min(A, B) ((A) < (B) ? (A) : (B))
@@ -85,7 +89,7 @@ float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = INIT_PADDLE_Y, rightPa
 float ballVelocityX = 0, ballVelocityY = 0;
 float ballSpeed;
 bool leftStart = true;
-bool inPlay = false, menu = true;
+bool inPlay = false, menu = true, pauseMenu = false;
 
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
@@ -230,6 +234,13 @@ void printButtonChar(int x, int y, char c) {
             glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
             glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
             break;
+        case 's':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
+            glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
+            glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glRectf(Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
+            break;
         case 'r':
             glBegin(GL_QUADS);
                 glVertex2f(Xpos(x + 1.5 * BUTTON_FONT_STROKE), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2));
@@ -243,6 +254,8 @@ void printButtonChar(int x, int y, char c) {
             glRectf(Xpos(x), Ypos(y + (BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE) / 2), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + (BUTTON_FONT_HEIGHT + BUTTON_FONT_STROKE) / 2));
             glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
             break;
+        case 'i':
+            glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
         case 't':
             glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT));
             glRectf(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT - BUTTON_FONT_STROKE), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
@@ -253,6 +266,18 @@ void printButtonChar(int x, int y, char c) {
             glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
             glRectf(Xpos(x), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_STROKE));
             glRectf(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y), Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            break;
+        case 'x':
+            glBegin(GL_QUADS);
+                glVertex2f(Xpos(x), Ypos(y));
+                glVertex2f(Xpos(x + BUTTON_FONT_STROKE), Ypos(y));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH), Ypos(y));
+                glVertex2f(Xpos(x + BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE), Ypos(y));
+                glVertex2f(Xpos(x), Ypos(y + BUTTON_FONT_HEIGHT));
+                glVertex2f(Xpos(x + BUTTON_FONT_STROKE), Ypos(y + BUTTON_FONT_HEIGHT));
+            glEnd();
             break;
         case 'y':
             glRectf(Xpos(x + (BUTTON_FONT_WIDTH - BUTTON_FONT_STROKE) / 2), Ypos(y), Xpos(x + (BUTTON_FONT_WIDTH + BUTTON_FONT_STROKE) / 2), Ypos(y + BUTTON_FONT_HEIGHT / 2));
@@ -316,15 +341,40 @@ void reset(int value) {
 void exitMenu() {
     menu = false;
     // set delay before starting
-    glutTimerFunc(SCORE_DELAY_MS, resetBall, 0);
+    glutTimerFunc(RESUME_DELAY_MS, reset, 0);
     glutTimerFunc(SEC_PER_FRAME, fixedUpdate, menuInstance);
     glutPostRedisplay();
 }
 
 void startMenu() {
     menu = true;
+    inPlay = false;
     menuInstance++;
     glutPostRedisplay();
+}
+
+void startPauseMenu() {
+    pauseMenu = true;
+    menuInstance++;
+    glutPostRedisplay();
+}
+
+void resumeFromPause() {
+    pauseMenu = false;
+    glutTimerFunc(RESUME_DELAY_MS, fixedUpdate, menuInstance);
+    glutPostRedisplay();
+}
+
+void exitFromPause() {
+    pauseMenu = false;
+    // hide ball
+    ballX = -BALL_DIM;
+    ballY = -BALL_DIM;
+    ballVelocityX = 0;
+    ballVelocityY = 0;
+    leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+    leftScore = rightScore = 0;
+    startMenu();
 }
 
 // prints digit with x and y giving the position of the bottom left corner of the digit
@@ -421,7 +471,21 @@ void display() {
         glColor3f(0., 0., 0.);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "play");
         glColor3f(1., 1., 1.);
+    } else if (pauseMenu) {
+        // resume button
+        glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_HEIGHT + BUTTON_SPACING / 2));
+        glColor3f(0., 0., 0.);
+        printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "resume");
+        glColor3f(1., 1., 1.);
 
+        // exit button
+        glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_SPACING / 2));
+        glColor3f(0., 0., 0.);
+        printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "exit");
+        glColor3f(1., 1., 1.);
+
+        // pause
+        printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 + BUTTON_SPACING + BUTTON_HEIGHT, "pause");
     } else {
         glColor3f(1., 1., 1.);
         // left paddle
@@ -451,6 +515,12 @@ void reshape(int width, int height) {
 void keypress(unsigned char key, int mouseX, int mouseY) {
     if (key == 'w') upButton = true;
     else if (key == 's') downButton = true;
+    else if (key == 27 /*ESC*/) {
+        if (!menu) {
+            if (pauseMenu) resumeFromPause();
+            else startPauseMenu();
+        }
+    }
 }
 
 void specialKeypress(int key, int mouseX, int mouseY) {
@@ -469,34 +539,44 @@ void specialKeyrelease(int key, int mouseX, int mouseY) {
 }
 
 void clickHandler(int button, int state, int x, int y) {
-    if (menu && button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         // flip x and y
         y = WINDOW_HEIGHTF - y;
         x = WINDOW_WIDTHF - x;
-        if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y))) {
-            // player number button
-            gameType = ++gameType % 3;
-            switch (gameType) {
-                case ONE_PLAYER:
-                    leftPaddleController = onePlayerController;
-                    rightPaddleController = rightComputerController;
-                    break;
-                case TWO_PLAYER:
-                    leftPaddleController = wasdPlayerController;
-                    rightPaddleController = arrowPlayerController;
-                    break;
-                case ZERO_PLAYER:
-                    leftPaddleController = leftComputerController;
-                    rightPaddleController = rightComputerController;
-                    break;
+        if (menu) {
+            if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y))) {
+                // player number button
+                gameType = ++gameType % 3;
+                switch (gameType) {
+                    case ONE_PLAYER:
+                        leftPaddleController = onePlayerController;
+                        rightPaddleController = rightComputerController;
+                        break;
+                    case TWO_PLAYER:
+                        leftPaddleController = wasdPlayerController;
+                        rightPaddleController = arrowPlayerController;
+                        break;
+                    case ZERO_PLAYER:
+                        leftPaddleController = leftComputerController;
+                        rightPaddleController = rightComputerController;
+                        break;
+                }
+                glutPostRedisplay();
+            } else if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING))) {
+                // play button
+                exitMenu();
             }
-            glutPostRedisplay();
-        }
-        if (inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING))) {
-            // play button
-            exitMenu();
+        } else if (pauseMenu) {
+            if (inRect(x, y, (WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2), (WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_HEIGHT + BUTTON_SPACING / 2))) {
+                // resume button
+                resumeFromPause();
+            } else if (inRect(x, y, (WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2), (WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_SPACING / 2))) {
+                // exit button
+                exitFromPause();
+            }
         }
     }
+    
 }
 
 void fixedUpdate(int value) {
