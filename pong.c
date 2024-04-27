@@ -101,6 +101,7 @@ float ballVelocityX = 0, ballVelocityY = 0;
 float ballSpeed;
 bool leftStart = true;
 bool inPlay = false, menu = true, pauseMenu = false;
+bool playerNumberButtonHover = false, playButtonHover = false, resumeButtonHover = false, exitButtonHover = false;
 
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
@@ -460,7 +461,8 @@ void display() {
         glRectf(Xpos(x + LOGO_FONT_WIDTH / 2), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
 
         // player number button
-        glColor3f(BUTTON_COLOR);
+        if (playerNumberButtonHover) glColor3f(HOVER_BUTTON_COLOR);
+        else glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y));
         const char* str;
         switch (gameType) {
@@ -478,19 +480,22 @@ void display() {
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, str);
 
         // play button
-        glColor3f(BUTTON_COLOR);
+        if (playButtonHover) glColor3f(HOVER_BUTTON_COLOR);
+        else glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), Xpos(WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING));
         glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "play");
     } else if (pauseMenu) {
         // resume button
-        glColor3f(BUTTON_COLOR);
+        if (resumeButtonHover) glColor3f(HOVER_BUTTON_COLOR);
+        else glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_HEIGHT + BUTTON_SPACING / 2));
         glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "resume");
 
         // exit button
-        glColor3f(BUTTON_COLOR);
+        if (exitButtonHover) glColor3f(HOVER_BUTTON_COLOR);
+        else glColor3f(BUTTON_COLOR);
         glRectf(Xpos(WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2), Xpos(WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), Ypos(WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_SPACING / 2));
         glColor3f(BUTTON_TEXT_COLOR);
         printButtonStringCentered(WINDOW_WIDTHF / 2, WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2 + (BUTTON_HEIGHT - BUTTON_FONT_HEIGHT) / 2, "exit");
@@ -551,6 +556,42 @@ void specialKeyrelease(int key, int mouseX, int mouseY) {
     else if (key == GLUT_KEY_DOWN) specialDownButton = false;
 }
 
+void hoverHandler(int x, int y) {
+    if (menu || pauseMenu) {
+        // flip x and y
+        y = WINDOW_HEIGHTF - y;
+        x = WINDOW_WIDTHF - x;
+        if(inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y))) {
+            playerNumberButtonHover = true;
+            glutPostRedisplay();
+        } else if (playerNumberButtonHover) {
+            playerNumberButtonHover = false;
+            glutPostRedisplay();
+        }
+        if(inRect(x, y, (WINDOW_WIDTHF / 2 - BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING), (WINDOW_WIDTHF / 2 + BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING))) {
+            playButtonHover = true;
+            glutPostRedisplay();
+        } else if (playButtonHover) {
+            playButtonHover = false;
+            glutPostRedisplay();
+        }
+        if(inRect(x, y, (WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_SPACING / 2), (WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y + BUTTON_HEIGHT + BUTTON_SPACING / 2))) {
+            resumeButtonHover = true;
+            glutPostRedisplay();
+        } else if (resumeButtonHover) {
+            resumeButtonHover = false;
+            glutPostRedisplay();
+        }
+        if(inRect(x, y, (WINDOW_WIDTHF / 2 - PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_HEIGHT - BUTTON_SPACING / 2), (WINDOW_WIDTHF / 2 + PAUSE_BUTTON_OFFSET_X), (WINDOW_HEIGHTF / 2 - BUTTON_OFFSET_Y - BUTTON_SPACING / 2))) {
+            exitButtonHover = true;
+            glutPostRedisplay();
+        } else if (exitButtonHover) {
+            exitButtonHover = false;
+            glutPostRedisplay();
+        }
+    }
+}
+
 void clickHandler(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         // flip x and y
@@ -589,7 +630,6 @@ void clickHandler(int button, int state, int x, int y) {
             }
         }
     }
-    
 }
 
 void fixedUpdate(int value) {
@@ -686,6 +726,8 @@ int main(int argc, char* argv) {
     glutSpecialFunc(specialKeypress);
     glutKeyboardUpFunc(keyrelease);
     glutSpecialUpFunc(specialKeyrelease);
+    glutMotionFunc(hoverHandler);
+    glutPassiveMotionFunc(hoverHandler);
     
     glutMainLoop();
 }
