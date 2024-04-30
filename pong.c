@@ -49,17 +49,18 @@
 #define PADDLE_WIDTH (WINDOW_WIDTHF / 90.)
 #define BALL_RADIUS (WINDOW_WIDTHF / 240.)
 #define MAX_BOUNCE_ANGLE (60.)
-#define COMPUTER_AIMING_TOLERANCE (PADDLE_HEIGHT / 10.)
+#define COMPUTER_AIMING_TOLERANCE (PADDLE_SPEED)
 
 #define BALL_DIM (2. * BALL_RADIUS)
 #define MAX_BOUNCE_ANGLE_RAD (M_PI * MAX_BOUNCE_ANGLE / 180.)
-#define PADDLE_INVISIBLE_COLLIDER_WIDTH (1.5 * PADDLE_WIDTH)
+#define PADDLE_INVISIBLE_COLLIDER_WIDTH (max(0, MAX_BALL_SPEED - PADDLE_WIDTH))
 
 #define MAX_PADDLE_Y (WINDOW_HEIGHTF - PADDLE_HEIGHT)
 #define MIN_PADDLE_Y (0.)
+#define MIDDLE_PADDLE_Y ((MAX_PADDLE_Y - MIN_PADDLE_Y) / 2.)
 #define LEFT_PADDLE_X (50.)
 #define RIGHT_PADDLE_X (WINDOW_WIDTHF - LEFT_PADDLE_X)
-#define INIT_PADDLE_Y ((WINDOW_HEIGHTF - PADDLE_HEIGHT) / 2.)
+#define INIT_PADDLE_Y (MIDDLE_PADDLE_Y)
 
 #define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9.)
 #define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100.)
@@ -111,6 +112,17 @@ int menuInstance = 0;
 typedef enum {
     UP, DOWN, STATIC
 } direction;
+
+typedef enum {
+    TOP, BOTTOM, FLAT, AGGRESSIVE, EASY
+} computerShot;
+
+computerShot leftComputerShot = EASY, rightComputerShot = EASY;
+
+computerShot getRandomShot() {
+    int r = rand();
+    return (computerShot) r % 5;
+}
 
 enum {
     ONE_PLAYER = 0, TWO_PLAYER = 1, ZERO_PLAYER = 2
@@ -176,12 +188,44 @@ float ballIntersectY(float tBallX, float tBallY, float tBallVelocityY) {
     return ballIntersectY(tBallX + ballVelocityX * yBounceTime, (tBallVelocityY > 0) ? WINDOW_HEIGHTF : 0, -tBallVelocityY);
 }
 
+/**
+ * returns the amount to shift the paddle in order to send the ball a specified distance (y value)
+ * up or down on the other side
+*/
+float targetAimingShift(float yChange) {
+    float angle = M_PI / 2. - atan2f(RIGHT_PADDLE_X - LEFT_PADDLE_X, fabsf(yChange));
+    float relY = angle / MAX_BOUNCE_ANGLE_RAD * PADDLE_HEIGHT / 2.;
+    relY = min(relY, PADDLE_HEIGHT / 2 - COMPUTER_AIMING_TOLERANCE);
+    float shift = -copysignf(relY, yChange);
+    return shift;
+}
+
 direction leftComputerController() {
     float targetY;
-    if (ballVelocityX > 0 || !inPlay) targetY = WINDOW_HEIGHTF / 2;
-    else if (ballVelocityY == 0) targetY = ballY;
-    else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
-    targetY -= PADDLE_HEIGHT / 2;
+    if (ballVelocityX > 0 || !inPlay) targetY = MIDDLE_PADDLE_Y;
+    else {
+        if (ballVelocityY == 0) targetY = ballY;
+        else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
+        targetY -= PADDLE_HEIGHT / 2;
+        switch (leftComputerShot) {
+            case TOP:
+                targetY += targetAimingShift(MAX_PADDLE_Y - leftPaddleY - PADDLE_HEIGHT / 2.);
+                break;
+            case BOTTOM:
+                targetY += targetAimingShift(-leftPaddleY + PADDLE_HEIGHT / 2.);
+                break;
+            case FLAT:
+                // dummy target
+                break;
+            case AGGRESSIVE:
+                targetY += targetAimingShift(rightPaddleY > MIDDLE_PADDLE_Y ? -leftPaddleY + PADDLE_HEIGHT / 2. : MAX_PADDLE_Y - leftPaddleY - PADDLE_HEIGHT / 2.);
+                break;
+            case EASY:
+                targetY += targetAimingShift(rightPaddleY - leftPaddleY);
+                break;
+        }
+    }
+    
     if (leftPaddleY < targetY - COMPUTER_AIMING_TOLERANCE) {
         return UP;
     }
@@ -193,10 +237,29 @@ direction leftComputerController() {
 
 direction rightComputerController() {
     float targetY;
-    if (ballVelocityX < 0 || !inPlay) targetY = WINDOW_HEIGHTF / 2;
-    else if (ballVelocityY == 0) targetY = ballY;
-    else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
-    targetY -= PADDLE_HEIGHT / 2;
+    if (ballVelocityX < 0 || !inPlay) targetY = MIDDLE_PADDLE_Y;
+    else {
+        if (ballVelocityY == 0) targetY = ballY;
+        else targetY = ballIntersectY(ballX + BALL_RADIUS, ballY + BALL_RADIUS, ballVelocityY);
+        targetY -= PADDLE_HEIGHT / 2;
+        switch (rightComputerShot) {
+            case TOP:
+                targetY += targetAimingShift(MAX_PADDLE_Y - rightPaddleY - PADDLE_HEIGHT / 2.);
+                break;
+            case BOTTOM:
+                targetY += targetAimingShift(-rightPaddleY + PADDLE_HEIGHT / 2.);
+                break;
+            case FLAT:
+                // dummy target
+                break;
+            case AGGRESSIVE:
+                targetY += targetAimingShift(leftPaddleY > MIDDLE_PADDLE_Y ? -rightPaddleY + PADDLE_HEIGHT / 2. : MAX_PADDLE_Y - rightPaddleY - PADDLE_HEIGHT / 2.);
+                break;
+            case EASY:
+                targetY += targetAimingShift(leftPaddleY - rightPaddleY);
+                break;
+        }
+    }
     if (rightPaddleY < targetY - COMPUTER_AIMING_TOLERANCE) {
         return UP;
     }
@@ -665,7 +728,7 @@ void fixedUpdate(int value) {
         }
         
         // paddles
-        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
+        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_INVISIBLE_COLLIDER_WIDTH - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
             ballX -= ballVelocityX;
             float relY = ballY + BALL_RADIUS - leftPaddleY - (PADDLE_HEIGHT / 2);
             relY /= (PADDLE_HEIGHT / 2);
@@ -673,7 +736,8 @@ void fixedUpdate(int value) {
             ballVelocityX = ballSpeed * cosf(bounceAngle);
             ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
-        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
+            leftComputerShot = getRandomShot();
+        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
             ballX -= ballVelocityX;
             float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
             relY /= (PADDLE_HEIGHT / 2);
@@ -681,6 +745,7 @@ void fixedUpdate(int value) {
             ballVelocityX = -ballSpeed * cosf(bounceAngle);
             ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
+            rightComputerShot = getRandomShot();
         }
 
         // score colliders
