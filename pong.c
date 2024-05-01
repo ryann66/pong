@@ -20,9 +20,9 @@
 #define TARGET_SCORE (10.)
 
 #define PADDLE_SPEED (4.)
-#define INITIAL_BALL_SPEED (10.)
+#define INITIAL_BALL_SPEED (8.5)
 #define MAX_BALL_SPEED (14.)
-#define BALL_SPEED_ACCELERATION (1.05)
+#define BALL_SPEED_ACCELERATION (1.025)
 
 #define BACKGROUND_COLOR 0.,0.,0.
 #define LOGO_COLOR 1.,1.,1.
@@ -34,16 +34,14 @@
 #define BALL_COLOR 1.,1.,1.
 #define GAME_ENVIRONMENT_COLOR 0.8,0.8,0.8
 
+float windowWidth = 800., windowHeight = 600.;
+
+#define WINDOW_WIDTHF (windowWidth)
+#define WINDOW_HEIGHTF (windowHeight)
+
 #define SEC_PER_FRAME (1000. / (FRAME_RATE))
 #define SCORE_DELAY_MS (1000. * SCORE_DELAY)
 #define RESUME_DELAY_MS (1000. * RESUME_DELAY)
-
-#define WINDOW_WIDTHF (800.)
-#define WINDOW_HEIGHTF (600.)
-
-#define MIN_WINDOW_WIDTH (500.)
-#define MIN_WINDOW_HEIGHT (WINDOW_WIDTHF * 9. / 16.)
-#define MAX_WINDOW_HEIGHT (WINDOW_WIDTHF * 3. / 4.)
 
 #define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8.)
 #define PADDLE_WIDTH (WINDOW_WIDTHF / 90.)
@@ -97,9 +95,10 @@
 
 unsigned char leftScore = 0, rightScore = 0;
 
-float ballX = -BALL_DIM, ballY = -BALL_DIM, leftPaddleY = INIT_PADDLE_Y, rightPaddleY = INIT_PADDLE_Y;
+float ballX = 0, ballY = 0, leftPaddleY = 0, rightPaddleY = 0;
 float ballVelocityX = 0, ballVelocityY = 0;
 float ballSpeed;
+
 bool leftStart = true;
 bool inPlay = false, menu = true, pauseMenu = false;
 bool playerNumberButtonHover = false, playButtonHover = false, resumeButtonHover = false, exitButtonHover = false;
@@ -393,28 +392,28 @@ void accelerateBall() {
     if (ballVelocityY != 0) ballVelocityY /= vel;
 }
 
-void resetBall() {
+void reset(int value) {
     ballSpeed = INITIAL_BALL_SPEED;
     ballX = WINDOW_WIDTHF / 2;
     ballY = WINDOW_HEIGHTF / 2;
-    ballVelocityX = leftStart ? -4 : 4;
+    ballVelocityX = leftStart ? -10. : 10.;
     ballVelocityY = sinf((float) rand());
-    ballVelocityY = 0.;
     float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
     vel /= ballSpeed;
     ballVelocityX /= vel;
     if (ballVelocityY != 0) ballVelocityY /= vel;
     leftStart = !leftStart;
     inPlay = true;
-}
-
-void reset(int value) {
-    resetBall();
     glutPostRedisplay();
 }
 
 void exitMenu() {
     menu = false;
+    // hide ball
+    ballX = -BALL_DIM;
+    ballY = -BALL_DIM;
+    leftPaddleY = INIT_PADDLE_Y;
+    rightPaddleY = INIT_PADDLE_Y;
     // set delay before starting
     glutTimerFunc(RESUME_DELAY_MS, reset, 0);
     glutTimerFunc(SEC_PER_FRAME, fixedUpdate, menuInstance);
