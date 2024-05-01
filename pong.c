@@ -14,16 +14,36 @@
 #include <math.h>
 #include <string.h>
 
+#define WINDOW_WIDTHF (1200.)
+#define WINDOW_HEIGHTF (900.)
+
+// timing constants
 #define FRAME_RATE (60.)
 #define SCORE_DELAY (1.)
 #define RESUME_DELAY (1.)
-#define TARGET_SCORE (10.)
 
+// game constants
 #define PADDLE_SPEED (4.)
-#define INITIAL_BALL_SPEED (8.5)
-#define MAX_BALL_SPEED (14.)
-#define BALL_SPEED_ACCELERATION (1.025)
+#define INITIAL_BALL_SPEED (10)
+#define MAX_BALL_SPEED (24.)
+#define BALL_SPEED_ACCELERATION (1.03)
+#define MAX_BOUNCE_ANGLE (60.)
+#define TARGET_SCORE (10.)
+#define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8.)
+#define PADDLE_WIDTH (WINDOW_WIDTHF / 90.)
+#define BALL_RADIUS (WINDOW_WIDTHF / 240.)
 
+// computer aiming probabilities
+#define PROB_TOP (23)
+#define PROB_BOTTOM (23)
+#define PROB_FLAT (15)
+#define PROB_EASY (5)
+#define PROB_AGGRESSIVE (24)
+#define PROB_ERRATIC_UP (5)
+#define PROB_ERRATIC_DOWN (5)
+#define PROB_WEIGHT_SUM (PROB_TOP + PROB_BOTTOM + PROB_FLAT + PROB_EASY + PROB_AGGRESSIVE + PROB_ERRATIC_UP + PROB_ERRATIC_DOWN)
+
+// game colors
 #define BACKGROUND_COLOR 0.,0.,0.
 #define LOGO_COLOR 1.,1.,1.
 #define TEXT_COLOR 1.,1.,1.
@@ -34,23 +54,19 @@
 #define BALL_COLOR 1.,1.,1.
 #define GAME_ENVIRONMENT_COLOR 0.8,0.8,0.8
 
-#define WINDOW_WIDTHF (1200.)
-#define WINDOW_HEIGHTF (900.)
-
+// derived timings
 #define SEC_PER_FRAME (1000. / (FRAME_RATE))
 #define SCORE_DELAY_MS (1000. * SCORE_DELAY)
 #define RESUME_DELAY_MS (1000. * RESUME_DELAY)
 
-#define PADDLE_HEIGHT (WINDOW_HEIGHTF / 8.)
-#define PADDLE_WIDTH (WINDOW_WIDTHF / 90.)
-#define BALL_RADIUS (WINDOW_WIDTHF / 240.)
-#define MAX_BOUNCE_ANGLE (60.)
-#define COMPUTER_AIMING_TOLERANCE (PADDLE_SPEED)
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
-#define BALL_DIM (2. * BALL_RADIUS)
+// derived game values
 #define MAX_BOUNCE_ANGLE_RAD (M_PI * MAX_BOUNCE_ANGLE / 180.)
+#define COMPUTER_AIMING_TOLERANCE (PADDLE_SPEED)
 #define PADDLE_INVISIBLE_COLLIDER_WIDTH (max(0, MAX_BALL_SPEED - PADDLE_WIDTH))
-
+#define BALL_DIM (2. * BALL_RADIUS)
 #define MAX_PADDLE_Y (WINDOW_HEIGHTF - PADDLE_HEIGHT)
 #define MIN_PADDLE_Y (0.)
 #define MIDDLE_PADDLE_Y ((MAX_PADDLE_Y - MIN_PADDLE_Y) / 2.)
@@ -58,15 +74,18 @@
 #define RIGHT_PADDLE_X (WINDOW_WIDTHF - LEFT_PADDLE_X)
 #define INIT_PADDLE_Y (MIDDLE_PADDLE_Y)
 
+// score counter drawing constants
 #define DIGIT_HEIGHT (WINDOW_HEIGHTF / 9.)
 #define DIGIT_STROKE_WEIGHT (WINDOW_WIDTHF / 100.)
 #define DIGIT_WIDTH ((DIGIT_HEIGHT + DIGIT_STROKE_WEIGHT) / 2.)
 #define DIGIT_OFFSET (DIGIT_WIDTH / 2.)
 
+// centerline drawing constants
 #define DASH_HEIGHT (WINDOW_HEIGHTF / 49.)
 #define DASH_WIDTH (WINDOW_WIDTHF / 200.)
 #define DASH_OFFSET (DASH_WIDTH / 2.)
 
+// button drawing constants
 #define BUTTON_WIDTH (WINDOW_WIDTHF / 2.5)
 #define BUTTON_HEIGHT (WINDOW_HEIGHTF / 9.)
 #define BUTTON_OFFSET_Y (BUTTON_HEIGHT / 2.)
@@ -75,87 +94,78 @@
 #define PAUSE_BUTTON_WIDTH (WINDOW_WIDTHF / 3.75)
 #define PAUSE_BUTTON_OFFSET_X (PAUSE_BUTTON_WIDTH / 2.)
 
+// button text drawing constants
 #define BUTTON_FONT_WIDTH (BUTTON_WIDTH / 14.)
 #define BUTTON_FONT_HEIGHT (BUTTON_HEIGHT * 2. / 3.)
 #define BUTTON_FONT_SPACING (BUTTON_FONT_WIDTH / 3.)
 #define BUTTON_FONT_STROKE (BUTTON_FONT_WIDTH / 4.)
 
+// logo drawing constants
 #define LOGO_FONT_WIDTH (BUTTON_WIDTH / 4.)
 #define LOGO_FONT_HEIGHT (BUTTON_HEIGHT * 1.25)
 #define LOGO_FONT_SPACING (BUTTON_FONT_WIDTH / 3.)
 #define LOGO_FONT_STROKE (LOGO_FONT_WIDTH / 6.)
 
+// conversion to gl coordinate system
 #define Xpos(x) (((x) * 2. / WINDOW_WIDTHF) - 1.)
 #define Ypos(y) (((y) * 2. / WINDOW_HEIGHTF) - 1.)
-
-#define max(A, B) ((A) > (B) ? (A) : (B))
-#define min(A, B) ((A) < (B) ? (A) : (B))
 
 unsigned char leftScore = 0, rightScore = 0;
 
 float ballX = 0, ballY = 0, leftPaddleY = 0, rightPaddleY = 0;
 float ballVelocityX = 0, ballVelocityY = 0;
-float ballSpeed;
+float ballSpeed = 0;
 
+// ball starting direction
 bool leftStart = true;
+
+// menu management booleans
 bool inPlay = false, menu = true, pauseMenu = false;
+
+// menu button press management
 bool playerNumberButtonHover = false, playButtonHover = false, resumeButtonHover = false, exitButtonHover = false;
 
+// current keypresses
 bool upButton = false, specialUpButton = false, downButton = false, specialDownButton = false;
 
 // used to prevent multiple fixed_update timers being triggered on spamming menu
 int menuInstance = 0;
 
-typedef enum {
-    UP, DOWN, STATIC
-} direction;
-
-typedef enum {
-    TOP, BOTTOM, FLAT, AGGRESSIVE, EASY, ERRATIC_UP, ERRATIC_DOWN
-} computerShot;
-
-computerShot leftComputerShot = EASY, rightComputerShot = EASY;
-
-computerShot getRandomShot() {
-    int r = rand();
-    return (computerShot) r % 7;
-}
-
+// gamemode
 enum {
     ONE_PLAYER = 0, TWO_PLAYER = 1, ZERO_PLAYER = 2
 } gameType = ONE_PLAYER;
 
-direction onePlayerController() {
-    if ((downButton || specialDownButton) ^ (upButton || specialUpButton)) {
-        if (downButton || specialDownButton) {
-            return DOWN;
-        } else {
-            return UP;
-        }
-    }
-    return STATIC;
-}
+// paddle movement directives
+typedef enum {
+    UP, DOWN, STATIC
+} direction;
 
-direction wasdPlayerController() {
-    if (downButton ^ upButton) {
-        if (downButton) {
-            return DOWN;
-        } else {
-            return UP;
-        }
-    }
-    return STATIC;
-}
+// computer controlled shot types
+typedef enum {
+    FLAT, TOP, BOTTOM, AGGRESSIVE, EASY, ERRATIC_UP, ERRATIC_DOWN
+} computerShot;
 
-direction arrowPlayerController() {
-    if (specialDownButton ^ specialUpButton) {
-        if (specialDownButton) {
-            return DOWN;
-        } else {
-            return UP;
-        }
-    }
-    return STATIC;
+computerShot leftComputerShot = FLAT, rightComputerShot = FLAT;
+
+/**
+ * Generates a random shot type for the computer to aim for
+*/
+computerShot getRandomShot() {
+    int r = rand() % PROB_WEIGHT_SUM;
+    if (r < PROB_FLAT) return FLAT;
+    r -= PROB_FLAT;
+    if (r < PROB_TOP) return TOP;
+    r -= PROB_TOP;
+    if (r < PROB_BOTTOM) return BOTTOM;
+    r -= PROB_BOTTOM;
+    if (r < PROB_AGGRESSIVE) return AGGRESSIVE;
+    r -= PROB_AGGRESSIVE;
+    if (r < PROB_EASY) return EASY;
+    r -= PROB_EASY;
+    if (r < PROB_ERRATIC_UP) return ERRATIC_UP;
+    r -= PROB_ERRATIC_UP;
+    return ERRATIC_DOWN;
 }
 
 /**
@@ -197,6 +207,51 @@ float targetAimingShift(float yChange) {
     return shift;
 }
 
+/**
+ * paddle controller for one player mode
+*/
+direction onePlayerController() {
+    if ((downButton || specialDownButton) ^ (upButton || specialUpButton)) {
+        if (downButton || specialDownButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
+/**
+ * left paddle controller for two player mode
+*/
+direction wasdPlayerController() {
+    if (downButton ^ upButton) {
+        if (downButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
+/**
+ * right paddle controller for two player mode
+*/
+direction arrowPlayerController() {
+    if (specialDownButton ^ specialUpButton) {
+        if (specialDownButton) {
+            return DOWN;
+        } else {
+            return UP;
+        }
+    }
+    return STATIC;
+}
+
+/**
+ * computer controller for the left paddle
+*/
 direction leftComputerController() {
     float targetY;
     if (ballVelocityX > 0 || !inPlay) targetY = MIDDLE_PADDLE_Y;
@@ -238,6 +293,9 @@ direction leftComputerController() {
     return STATIC;
 }
 
+/**
+ * computer controller for the right paddle
+*/
 direction rightComputerController() {
     float targetY;
     if (ballVelocityX < 0 || !inPlay) targetY = MIDDLE_PADDLE_Y;
@@ -278,16 +336,234 @@ direction rightComputerController() {
     return STATIC;
 }
 
+// paddle controller functions (called to determine direction to move)
 direction (*leftPaddleController)() = onePlayerController;
 direction (*rightPaddleController)() = rightComputerController;
 
+/**
+ * increases the speed of the ball
+*/
+void accelerateBall() {
+    ballSpeed = min(ballSpeed * BALL_SPEED_ACCELERATION, MAX_BALL_SPEED);
+    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
+    vel /= ballSpeed;
+    ballVelocityX /= vel;
+    if (ballVelocityY != 0) ballVelocityY /= vel;
+}
+
+/**
+ * resets the ball position for a new round
+*/
+void reset(int value) {
+    ballSpeed = INITIAL_BALL_SPEED;
+    ballX = WINDOW_WIDTHF / 2;
+    ballY = WINDOW_HEIGHTF / 2;
+    ballVelocityX = leftStart ? -10. : 10.;
+    ballVelocityY = sinf((float) rand());
+    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
+    vel /= ballSpeed;
+    ballVelocityX /= vel;
+    if (ballVelocityY != 0) ballVelocityY /= vel;
+    leftStart = !leftStart;
+    inPlay = true;
+    glutPostRedisplay();
+}
+
+/**
+ * glut callback (see below for definition)
+*/
+void fixedUpdate(int);
+
+/**
+ * sets state variables for leaving the main menu and entering the game
+*/
+void exitMenu() {
+    menu = false;
+    // hide ball
+    ballX = -BALL_DIM;
+    ballY = -BALL_DIM;
+    leftPaddleY = INIT_PADDLE_Y;
+    rightPaddleY = INIT_PADDLE_Y;
+    // set delay before starting
+    glutTimerFunc(RESUME_DELAY_MS, reset, 0);
+    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, menuInstance);
+    glutPostRedisplay();
+}
+
+/**
+ * sets state variables for entering the main menu
+*/
+void startMenu() {
+    menu = true;
+    inPlay = false;
+    menuInstance++;
+    glutPostRedisplay();
+}
+
+/**
+ * sets state variables for pause menu
+*/
+void startPauseMenu() {
+    pauseMenu = true;
+    menuInstance++;
+    glutPostRedisplay();
+}
+
+/**
+ * sets state variables for resuming from pause menu
+*/
+void resumeFromPause() {
+    pauseMenu = false;
+    glutTimerFunc(RESUME_DELAY_MS, fixedUpdate, menuInstance);
+    glutPostRedisplay();
+}
+
+/**
+ * sets state variables for exiting to main menu from pause
+*/
+void exitFromPause() {
+    pauseMenu = false;
+    // hide ball
+    ballX = -BALL_DIM;
+    ballY = -BALL_DIM;
+    ballVelocityX = 0;
+    ballVelocityY = 0;
+    leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+    leftScore = rightScore = 0;
+    startMenu();
+}
+
+/**
+ * main game loop
+ * should execute at frame rate while game is in play
+*/
+void fixedUpdate(int value) {
+    if (value != menuInstance) return;
+    direction d = leftPaddleController();
+    if (d == DOWN) {
+        leftPaddleY = max(leftPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
+    } else if (d == UP) {
+        leftPaddleY = min(leftPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
+    }
+    d = rightPaddleController();
+    if (d == DOWN) {
+        rightPaddleY = max(rightPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
+    } else if (d == UP) {
+        rightPaddleY = min(rightPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
+    }
+
+    ballX += ballVelocityX;
+    ballY += ballVelocityY;
+
+    // only calculate collisions if ball is in play
+    if (inPlay) {
+        // Simple collision resolvers that rely on low speed and small BALL_DIM to be accurate
+        // top and bottom
+        if (ballY + BALL_DIM > WINDOW_HEIGHTF) {
+            ballVelocityY = -ballVelocityY;
+            ballY += ballVelocityY;
+        } else if (ballY < 0) {
+            ballVelocityY = -ballVelocityY;
+            ballY += ballVelocityY;
+        }
+        
+        // paddles
+        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_INVISIBLE_COLLIDER_WIDTH - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
+            ballX -= ballVelocityX;
+            float relY = ballY + BALL_RADIUS - leftPaddleY - (PADDLE_HEIGHT / 2);
+            relY /= (PADDLE_HEIGHT / 2);
+            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
+            ballVelocityX = ballSpeed * cosf(bounceAngle);
+            ballVelocityY = ballSpeed * sinf(bounceAngle);
+            ballY += ballVelocityY;
+            leftComputerShot = getRandomShot();
+            accelerateBall();
+        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
+            ballX -= ballVelocityX;
+            float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
+            relY /= (PADDLE_HEIGHT / 2);
+            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
+            ballVelocityX = -ballSpeed * cosf(bounceAngle);
+            ballVelocityY = ballSpeed * sinf(bounceAngle);
+            ballY += ballVelocityY;
+            rightComputerShot = getRandomShot();
+            accelerateBall();
+        }
+
+        // score colliders
+        if (ballX < 0) {
+            rightScore++;
+            inPlay = false;
+            if (rightScore == TARGET_SCORE) {
+                leftScore = rightScore = 0;
+                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+                startMenu();
+                return;
+            }
+            glutTimerFunc(SCORE_DELAY_MS, reset, 0);
+        } else if (ballX + BALL_DIM > WINDOW_WIDTHF) {
+            leftScore++;
+            inPlay = false;
+            if (leftScore == TARGET_SCORE) {
+                leftScore = rightScore = 0;
+                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
+                startMenu();
+                return;
+            }
+            glutTimerFunc(SCORE_DELAY_MS, reset, 0);
+        }
+    }
+    
+    glutPostRedisplay();
+    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, value);
+}
+
+/**
+ * helper function for bounds checking
+*/
 inline bool inRect(int x, int y, int lbX, int lbY, int ubX, int ubY) {
     return x >= lbX && x <= ubX && y >= lbY && y <= ubY;
 }
 
+void printLogo(int x, int y) {
+    // P
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+    glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+    // O
+    x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
+    glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE));
+    // N
+    x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x + LOGO_FONT_WIDTH), Ypos(y), Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+    glBegin(GL_QUADS);
+        glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+        glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT - 1.5 * LOGO_FONT_STROKE));
+        glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y));
+        glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + 1.5 * LOGO_FONT_STROKE));
+    glEnd();
+    // G
+    x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
+    glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
+    glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+    glRectf(Xpos(x + LOGO_FONT_WIDTH / 2), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+}
+
+inline void printLogoCentered(int x, int y) {
+    printLogo(x - ((4 * LOGO_FONT_WIDTH + 3 * LOGO_FONT_SPACING) / 2), y);
+}
+
 /**
+ * prints the character c at the given coords
  * WARNING! partial implementation, check code to see if your character is supported
- * Note: prints only uppercase, requires a lowercase c
+ * Note: prints only uppercase, requires a lowercase char c
 */
 void printButtonChar(int x, int y, char c) {
     switch (c) {
@@ -380,6 +656,11 @@ void printButtonChar(int x, int y, char c) {
     }
 }
 
+/**
+ * prints the string at the given coords
+ * WARNING! partial implementation, check code to see if your character is supported
+ * Note: prints only uppercase, requires string be all lowercase
+*/
 inline void printButtonString(int x, int y, const char* string) {
     while (*string) {
         printButtonChar(x, y, *string++);
@@ -387,81 +668,19 @@ inline void printButtonString(int x, int y, const char* string) {
     }
 }
 
+/**
+ * prints the string centered at the given coords
+ * WARNING! partial implementation, check code to see if your character is supported
+ * Note: prints only uppercase, requires string be all lowercase
+*/
 inline void printButtonStringCentered(int x, int y, const char* string) {
     size_t l = strlen(string);
     printButtonString(x - (l * BUTTON_FONT_WIDTH + (l - 1) * BUTTON_FONT_SPACING) / 2, y, string);
 }
 
-void fixedUpdate(int value);
-
-void accelerateBall() {
-    ballSpeed = min(ballSpeed * BALL_SPEED_ACCELERATION, MAX_BALL_SPEED);
-    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
-    vel /= ballSpeed;
-    ballVelocityX /= vel;
-    if (ballVelocityY != 0) ballVelocityY /= vel;
-}
-
-void reset(int value) {
-    ballSpeed = INITIAL_BALL_SPEED;
-    ballX = WINDOW_WIDTHF / 2;
-    ballY = WINDOW_HEIGHTF / 2;
-    ballVelocityX = leftStart ? -10. : 10.;
-    ballVelocityY = sinf((float) rand());
-    float vel = sqrtf(ballVelocityX * ballVelocityX + ballVelocityY * ballVelocityY);
-    vel /= ballSpeed;
-    ballVelocityX /= vel;
-    if (ballVelocityY != 0) ballVelocityY /= vel;
-    leftStart = !leftStart;
-    inPlay = true;
-    glutPostRedisplay();
-}
-
-void exitMenu() {
-    menu = false;
-    // hide ball
-    ballX = -BALL_DIM;
-    ballY = -BALL_DIM;
-    leftPaddleY = INIT_PADDLE_Y;
-    rightPaddleY = INIT_PADDLE_Y;
-    // set delay before starting
-    glutTimerFunc(RESUME_DELAY_MS, reset, 0);
-    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, menuInstance);
-    glutPostRedisplay();
-}
-
-void startMenu() {
-    menu = true;
-    inPlay = false;
-    menuInstance++;
-    glutPostRedisplay();
-}
-
-void startPauseMenu() {
-    pauseMenu = true;
-    menuInstance++;
-    glutPostRedisplay();
-}
-
-void resumeFromPause() {
-    pauseMenu = false;
-    glutTimerFunc(RESUME_DELAY_MS, fixedUpdate, menuInstance);
-    glutPostRedisplay();
-}
-
-void exitFromPause() {
-    pauseMenu = false;
-    // hide ball
-    ballX = -BALL_DIM;
-    ballY = -BALL_DIM;
-    ballVelocityX = 0;
-    ballVelocityY = 0;
-    leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
-    leftScore = rightScore = 0;
-    startMenu();
-}
-
-// prints digit with x and y giving the position of the bottom left corner of the digit
+/**
+ * prints digit with x and y giving the position of the bottom left corner of the digit
+ */
 void printDigit(int x, int y, unsigned char digit) {
     // bottom bar
     if (digit == 0 || digit == 2 || digit == 3 || digit == 5 || digit == 6 || digit == 8) {
@@ -493,7 +712,10 @@ void printDigit(int x, int y, unsigned char digit) {
     }
 }
 
-// prints the screen
+/**
+ * draws the screen
+ * glut callback for screen display
+*/
 void display() {
     glClearColor(BACKGROUND_COLOR, 1.);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -501,36 +723,7 @@ void display() {
     if (menu) {
         // logo
         glColor3f(LOGO_COLOR);
-        // P
-        float x = (WINDOW_WIDTHF / 2) - ((4 * LOGO_FONT_WIDTH + 3 * LOGO_FONT_SPACING) / 2);
-        float y = WINDOW_HEIGHTF / 2 + BUTTON_OFFSET_Y + BUTTON_SPACING;
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
-        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
-        // O
-        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
-        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE));
-        // N
-        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x + LOGO_FONT_WIDTH), Ypos(y), Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-        glBegin(GL_QUADS);
-            glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-            glVertex2f(Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT - 1.5 * LOGO_FONT_STROKE));
-            glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y));
-            glVertex2f(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y + 1.5 * LOGO_FONT_STROKE));
-        glEnd();
-        // G
-        x += LOGO_FONT_WIDTH + LOGO_FONT_SPACING;
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_STROKE), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x), Ypos(y + LOGO_FONT_HEIGHT - LOGO_FONT_STROKE), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_HEIGHT));
-        glRectf(Xpos(x), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + LOGO_FONT_STROKE));
-        glRectf(Xpos(x + LOGO_FONT_WIDTH - LOGO_FONT_STROKE), Ypos(y), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
-        glRectf(Xpos(x + LOGO_FONT_WIDTH / 2), Ypos(y + (LOGO_FONT_HEIGHT - LOGO_FONT_STROKE) / 2), Xpos(x + LOGO_FONT_WIDTH), Ypos(y + (LOGO_FONT_HEIGHT + LOGO_FONT_STROKE) / 2));
+        printLogoCentered(WINDOW_WIDTHF / 2., WINDOW_HEIGHTF / 2. + BUTTON_OFFSET_Y + BUTTON_SPACING);
 
         // player number button
         if (playerNumberButtonHover) glColor3f(HOVER_BUTTON_COLOR);
@@ -598,10 +791,16 @@ void display() {
     glutSwapBuffers();
 }
 
+/**
+ * glut callback to disable window resizing
+*/
 void reshape(int width, int height) {
     glutReshapeWindow((int)WINDOW_WIDTHF, (int)WINDOW_HEIGHTF);
 }
 
+/**
+ * glut callback for keypresses
+*/
 void keypress(unsigned char key, int mouseX, int mouseY) {
     if (key == 'w') upButton = true;
     else if (key == 's') downButton = true;
@@ -613,21 +812,34 @@ void keypress(unsigned char key, int mouseX, int mouseY) {
     }
 }
 
+/**
+ * glut callback for special keypresses
+*/
 void specialKeypress(int key, int mouseX, int mouseY) {
     if (key == GLUT_KEY_UP) specialUpButton = true;
     else if (key == GLUT_KEY_DOWN) specialDownButton = true;
 }
 
+/**
+ * glut callback for key releases
+*/
 void keyrelease(unsigned char key, int mouseX, int mouseY) {
     if (key == 'w') upButton = false;
     else if (key == 's') downButton = false;
 }
 
+/**
+ * glut callback for special key releases
+*/
 void specialKeyrelease(int key, int mouseX, int mouseY) {
     if (key == GLUT_KEY_UP) specialUpButton = false;
     else if (key == GLUT_KEY_DOWN) specialDownButton = false;
 }
 
+/**
+ * glut mouse callback
+ * handles shading buttons when hovered
+*/
 void hoverHandler(int x, int y) {
     if (menu || pauseMenu) {
         // flip x and y
@@ -664,6 +876,10 @@ void hoverHandler(int x, int y) {
     }
 }
 
+/**
+ * glut callback for mouse clicks
+ * handles button presses
+*/
 void clickHandler(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         // flip x and y
@@ -704,87 +920,9 @@ void clickHandler(int button, int state, int x, int y) {
     }
 }
 
-void fixedUpdate(int value) {
-    if (value != menuInstance) return;
-    direction d = leftPaddleController();
-    if (d == DOWN) {
-        leftPaddleY = max(leftPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
-    } else if (d == UP) {
-        leftPaddleY = min(leftPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
-    }
-    d = rightPaddleController();
-    if (d == DOWN) {
-        rightPaddleY = max(rightPaddleY - WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MIN_PADDLE_Y);
-    } else if (d == UP) {
-        rightPaddleY = min(rightPaddleY + WINDOW_HEIGHTF / 512. * PADDLE_SPEED, MAX_PADDLE_Y);
-    }
-
-    ballX += ballVelocityX;
-    ballY += ballVelocityY;
-
-    // only calculate collisions if ball is in play
-    if (inPlay) {
-        // Simple collision resolvers that rely on low speed and small BALL_DIM to be accurate
-        // top and bottom
-        if (ballY + BALL_DIM > WINDOW_HEIGHTF) {
-            ballVelocityY = -ballVelocityY;
-            ballY += ballVelocityY;
-        } else if (ballY < 0) {
-            ballVelocityY = -ballVelocityY;
-            ballY += ballVelocityY;
-        }
-        
-        // paddles
-        if (ballX < LEFT_PADDLE_X && ballX > LEFT_PADDLE_X - PADDLE_INVISIBLE_COLLIDER_WIDTH - PADDLE_WIDTH && ballY + BALL_DIM > leftPaddleY && ballY < leftPaddleY + PADDLE_HEIGHT) {
-            ballX -= ballVelocityX;
-            float relY = ballY + BALL_RADIUS - leftPaddleY - (PADDLE_HEIGHT / 2);
-            relY /= (PADDLE_HEIGHT / 2);
-            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
-            ballVelocityX = ballSpeed * cosf(bounceAngle);
-            ballVelocityY = ballSpeed * sinf(bounceAngle);
-            ballY += ballVelocityY;
-            leftComputerShot = getRandomShot();
-            accelerateBall();
-        } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
-            ballX -= ballVelocityX;
-            float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
-            relY /= (PADDLE_HEIGHT / 2);
-            float bounceAngle = relY * MAX_BOUNCE_ANGLE_RAD;
-            ballVelocityX = -ballSpeed * cosf(bounceAngle);
-            ballVelocityY = ballSpeed * sinf(bounceAngle);
-            ballY += ballVelocityY;
-            rightComputerShot = getRandomShot();
-            accelerateBall();
-        }
-
-        // score colliders
-        if (ballX < 0) {
-            rightScore++;
-            inPlay = false;
-            if (rightScore == TARGET_SCORE) {
-                leftScore = rightScore = 0;
-                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
-                startMenu();
-                return;
-            }
-            glutTimerFunc(SCORE_DELAY_MS, reset, 0);
-        } else if (ballX + BALL_DIM > WINDOW_WIDTHF) {
-            leftScore++;
-            inPlay = false;
-            if (leftScore == TARGET_SCORE) {
-                leftScore = rightScore = 0;
-                leftPaddleY = rightPaddleY = INIT_PADDLE_Y;
-                startMenu();
-                return;
-            }
-            glutTimerFunc(SCORE_DELAY_MS, reset, 0);
-        }
-    }
-    
-    glutPostRedisplay();
-    glutTimerFunc(SEC_PER_FRAME, fixedUpdate, value);
-}
-
+/**
+ * main function, glut init
+*/
 int main(int argc, char* argv) {
     srand(time(NULL));
     glutInit(&argc, &argv);
