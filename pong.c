@@ -34,10 +34,8 @@
 #define BALL_COLOR 1.,1.,1.
 #define GAME_ENVIRONMENT_COLOR 0.8,0.8,0.8
 
-float windowWidth = 800., windowHeight = 600.;
-
-#define WINDOW_WIDTHF (windowWidth)
-#define WINDOW_HEIGHTF (windowHeight)
+#define WINDOW_WIDTHF (1200.)
+#define WINDOW_HEIGHTF (900.)
 
 #define SEC_PER_FRAME (1000. / (FRAME_RATE))
 #define SCORE_DELAY_MS (1000. * SCORE_DELAY)
@@ -113,14 +111,14 @@ typedef enum {
 } direction;
 
 typedef enum {
-    TOP, BOTTOM, FLAT, AGGRESSIVE, EASY
+    TOP, BOTTOM, FLAT, AGGRESSIVE, EASY, ERRATIC_UP, ERRATIC_DOWN
 } computerShot;
 
 computerShot leftComputerShot = EASY, rightComputerShot = EASY;
 
 computerShot getRandomShot() {
     int r = rand();
-    return (computerShot) r % 5;
+    return (computerShot) r % 7;
 }
 
 enum {
@@ -222,6 +220,12 @@ direction leftComputerController() {
             case EASY:
                 targetY += targetAimingShift(rightPaddleY - leftPaddleY);
                 break;
+            case ERRATIC_UP:
+                targetY -= (PADDLE_HEIGHT / 2) - COMPUTER_AIMING_TOLERANCE;
+                break;
+            case ERRATIC_DOWN:
+                targetY += (PADDLE_HEIGHT / 2) - COMPUTER_AIMING_TOLERANCE;
+                break;
         }
     }
     
@@ -256,6 +260,12 @@ direction rightComputerController() {
                 break;
             case EASY:
                 targetY += targetAimingShift(leftPaddleY - rightPaddleY);
+                break;
+            case ERRATIC_UP:
+                targetY -= (PADDLE_HEIGHT / 2) - COMPUTER_AIMING_TOLERANCE;
+                break;
+            case ERRATIC_DOWN:
+                targetY += (PADDLE_HEIGHT / 2) - COMPUTER_AIMING_TOLERANCE;
                 break;
         }
     }
@@ -718,11 +728,9 @@ void fixedUpdate(int value) {
         // top and bottom
         if (ballY + BALL_DIM > WINDOW_HEIGHTF) {
             ballVelocityY = -ballVelocityY;
-            accelerateBall();
             ballY += ballVelocityY;
         } else if (ballY < 0) {
             ballVelocityY = -ballVelocityY;
-            accelerateBall();
             ballY += ballVelocityY;
         }
         
@@ -736,6 +744,7 @@ void fixedUpdate(int value) {
             ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
             leftComputerShot = getRandomShot();
+            accelerateBall();
         } else if (ballX + BALL_DIM > RIGHT_PADDLE_X && ballX + BALL_DIM < RIGHT_PADDLE_X + PADDLE_WIDTH + PADDLE_INVISIBLE_COLLIDER_WIDTH && ballY + BALL_DIM > rightPaddleY && ballY < rightPaddleY + PADDLE_HEIGHT) {
             ballX -= ballVelocityX;
             float relY = ballY + BALL_RADIUS - rightPaddleY - (PADDLE_HEIGHT / 2);
@@ -745,6 +754,7 @@ void fixedUpdate(int value) {
             ballVelocityY = ballSpeed * sinf(bounceAngle);
             ballY += ballVelocityY;
             rightComputerShot = getRandomShot();
+            accelerateBall();
         }
 
         // score colliders
